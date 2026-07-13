@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "type": "LOW_MOISTURE",
+    "message": "Soil moisture levels critically low at 28%. Minimum recommended limit is 30%.",
+    "status": "RESOLVED",
+    "timestamp": "2026-07-13T06:43:45.276Z"
+  },
+  {
+    "id": 2,
+    "type": "HIGH_TEMP",
+    "message": "Critical temperature of 36.0°C exceeded threshold (35°C).",
+    "status": "RESOLVED",
+    "timestamp": "2026-07-13T06:43:53.284Z"
+  },
+  {
+    "id": 3,
+    "type": "LOW_WATER",
+    "message": "Water tank reservoir low at 14%. Refill immediately to protect pump mechanism.",
+    "status": "RESOLVED",
+    "timestamp": "2026-07-13T06:45:45.389Z"
+  },
+  {
+    "id": 4,
+    "type": "LOW_WATER",
+    "message": "Water tank reservoir low at 14%. Refill immediately to protect pump mechanism.",
+    "status": "RESOLVED",
+    "timestamp": "2026-07-13T06:51:29.730Z"
+  },
+  {
+    "id": 5,
+    "type": "LOW_WATER",
+    "message": "Water tank reservoir low at 14%. Refill immediately to protect pump mechanism.",
+    "status": "RESOLVED",
+    "timestamp": "2026-07-13T06:57:14.077Z"
+  }
+]

@@ -1,0 +1,368 @@
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+
+// Interfaces matching backend payload models
+export interface SensorReading {
+  id: number;
+  temperature: number;
+  humidity: number;
+  moisture: number;
+  light: number;
+  waterLevel: number;
+  healthScore: number;
+  pumpStatus: 'ON' | 'OFF';
+  fanStatus: 'ON' | 'OFF';
+  timestamp: string;
+}
+
+export interface SystemAlert {
+  id: number;
+  type: string;
+  message: string;
+  status: 'ACTIVE' | 'ACKNOWLEDGED' | 'RESOLVED';
+  timestamp: string;
+}
+
+export interface AnalyticsData {
+  avgTemp: number;
+  maxTemp: number;
+  minTemp: number;
+  avgHumid: number;
+  maxHumid: number;
+  minHumid: number;
+  avgMoist: number;
+  maxMoist: number;
+  minMoist: number;
+  avgLight: number;
+  maxLight: number;
+  minLight: number;
+  avgWater: number;
+  maxWater: number;
+  minWater: number;
+  avgHealth: number;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Admin' | 'Farmer';
+}
+
+interface AgrishieldContextType {
+  latestReading: SensorReading | null;
+  history: SensorReading[];
+  activeAlerts: SystemAlert[];
+  analytics: AnalyticsData | null;
+  isConnected: boolean;
+  user: UserProfile | null;
+  token: string | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, role: string) => Promise<boolean>;
+  logout: () => void;
+  resolveAlert: (id: number) => Promise<void>;
+  clearAllAlerts: () => Promise<void>;
+  refreshAnalytics: () => Promise<void>;
+}
+
+const AgrishieldContext = createContext<AgrishieldContextType | undefined>(undefined);
+
+export function AgrishieldProvider({ children }: { children: ReactNode }) {
+  const [latestReading, setLatestReading] = useState<SensorReading | null>(null);
+  const [history, setHistory] = useState<SensorReading[]>([]);
+  const [activeAlerts, setActiveAlerts] = useState<SystemAlert[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('agrishield_user');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('agrishield_token');
+    }
+    return null;
+  });
+
+  // Dynamic network resolution (local hostname makes it responsive on phones too)
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const API_URL = `http://${host}:5000`;
+  const WS_URL = `ws://${host}:5000`;
+
+  const getHeaders = () => {
+    const savedToken = token || (typeof window !== 'undefined' ? localStorage.getItem('agrishield_token') : null);
+    return {
+      'Content-Type': 'application/json',
+      ...(savedToken ? { 'Authorization': `Bearer ${savedToken}` } : {})
+    };
+  };
+
+  const verifyToken = async (savedToken: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/me`, {
+        headers: { 'Authorization': `Bearer ${savedToken}` }
+      });
+      if (res.ok) {
+        const userData = await res.json();
+        setUser(userData);
+        localStorage.setItem('agrishield_user', JSON.stringify(userData));
+      } else {
+        logout();
+      }
+    } catch (err) {
+      console.warn('Auth server unreachable during verification.');
+    }
+  };
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+      
+      localStorage.setItem('agrishield_token', data.token);
+      localStorage.setItem('agrishield_user', JSON.stringify(data.user));
+      setToken(data.token);
+      setUser(data.user);
+      return true;
+    } catch (err: any) {
+      throw new Error(err.message || 'Network error');
+    }
+  };
+
+  const register = async (name: string, email: string, password: string, role: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Registration failed');
+      
+      localStorage.setItem('agrishield_token', data.token);
+      localStorage.setItem('agrishield_user', JSON.stringify(data.user));
+      setToken(data.token);
+      setUser(data.user);
+      return true;
+    } catch (err: any) {
+      throw new Error(err.message || 'Network error');
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('agrishield_token');
+    localStorage.removeItem('agrishield_user');
+    setToken(null);
+    setUser(null);
+  };
+
+  // Fetch all initial data states
+  const fetchInitialData = async () => {
+    try {
+      // 1. Latest Reading
+      const resLatest = await fetch(`${API_URL}/api/sensor/latest`, { headers: getHeaders() });
+      if (resLatest.ok) {
+        const data = await resLatest.json();
+        setLatestReading(data);
+      }
+
+      // 2. History logs
+      const resHistory = await fetch(`${API_URL}/api/sensor/history?limit=24`, { headers: getHeaders() });
+      if (resHistory.ok) {
+        const data = await resHistory.json();
+        setHistory(data);
+      }
+
+      // 3. Active Alerts
+      const resAlerts = await fetch(`${API_URL}/api/alerts?status=ACTIVE`, { headers: getHeaders() });
+      if (resAlerts.ok) {
+        const data = await resAlerts.json();
+        setActiveAlerts(data);
+      }
+
+      // 4. Analytics
+      await refreshAnalytics();
+    } catch (err) {
+      console.warn('Backend is unreachable via HTTP. Standing by for connection...', err);
+    }
+  };
+
+  const refreshAnalytics = async () => {
+    try {
+      const resAnalytics = await fetch(`${API_URL}/api/sensor/analytics`, { headers: getHeaders() });
+      if (resAnalytics.ok) {
+        const data = await resAnalytics.json();
+        setAnalytics(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+    }
+  };
+
+  const resolveAlert = async (id: number) => {
+    try {
+      const res = await fetch(`${API_URL}/api/alerts/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ status: 'RESOLVED' })
+      });
+      if (res.ok) {
+        setActiveAlerts(prev => prev.filter(alert => alert.id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to resolve alert:', err);
+    }
+  };
+
+  const clearAllAlerts = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/alerts/clear`, { 
+        method: 'POST',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        setActiveAlerts([]);
+      }
+    } catch (err) {
+      console.error('Failed to clear alerts:', err);
+    }
+  };
+
+  useEffect(() => {
+    const savedToken = localStorage.getItem('agrishield_token');
+    if (savedToken) {
+      verifyToken(savedToken);
+    }
+
+    // Fetch initial records on component mount
+    fetchInitialData();
+
+    let ws: WebSocket;
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
+
+    const connectWebSocket = () => {
+      console.log(`[WS] Connecting to ${WS_URL}...`);
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        console.log('[WS] Connected to AgriShield Backend.');
+        setIsConnected(true);
+        // Refresh data on re-establishing link
+        fetchInitialData();
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          
+          switch (message.type) {
+            case 'INIT': {
+              const { latestReading: initLatest, activeAlerts: initAlerts } = message.data;
+              if (initLatest) setLatestReading(initLatest);
+              if (initAlerts) setActiveAlerts(initAlerts);
+              break;
+            }
+            case 'TELEMETRY': {
+              const reading = message.data as SensorReading;
+              setLatestReading(reading);
+              setHistory(prev => {
+                const updated = [reading, ...prev];
+                // Cap cache size
+                if (updated.length > 50) updated.pop();
+                return updated;
+              });
+              // Keep analytics in sync
+              refreshAnalytics();
+              break;
+            }
+            case 'ALERTS_UPDATE': {
+              const changes = message.data;
+              changes.forEach((change: any) => {
+                if (change.action === 'RAISED') {
+                  setActiveAlerts(prev => {
+                    // Prevent duplicates
+                    if (prev.some(a => a.id === change.alert.id)) return prev;
+                    return [change.alert, ...prev];
+                  });
+                } else if (change.action === 'RESOLVED') {
+                  setActiveAlerts(prev => prev.filter(a => a.id !== change.id));
+                }
+              });
+              break;
+            }
+            case 'ALERTS_CHANGED': {
+              const { id, status } = message.data;
+              if (status === 'RESOLVED' || status === 'ACKNOWLEDGED') {
+                setActiveAlerts(prev => prev.filter(a => a.id !== id));
+              }
+              break;
+            }
+            case 'ALERTS_CLEARED': {
+              setActiveAlerts([]);
+              break;
+            }
+            default:
+              break;
+          }
+        } catch (err) {
+          console.error('[WS] Error processing message:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('[WS] Connection closed. Attempting reconnect...');
+        setIsConnected(false);
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.error('[WS] WebSocket error:', err);
+        ws.close();
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (ws) ws.close();
+      clearTimeout(reconnectTimeout);
+    };
+  }, []);
+
+  return (
+    <AgrishieldContext.Provider value={{
+      latestReading,
+      history,
+      activeAlerts,
+      analytics,
+      isConnected,
+      user,
+      token,
+      login,
+      register,
+      logout,
+      resolveAlert,
+      clearAllAlerts,
+      refreshAnalytics
+    }}>
+      {children}
+    </AgrishieldContext.Provider>
+  );
+}
+
+export function useAgrishield() {
+  const context = useContext(AgrishieldContext);
+  if (context === undefined) {
+    throw new Error('useAgrishield must be used within an AgrishieldProvider');
+  }
+  return context;
+}
