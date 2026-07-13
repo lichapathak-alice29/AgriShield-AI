@@ -85,7 +85,7 @@ void streamTelemetryToBackend(float t, float h, int s, int l, int w, int score, 
     http.addHeader("Content-Type", "application/json");
 
     // Dynamic JSON Serialization Document
-    JsonDocument doc;
+    StaticJsonDocument<512> doc;
     doc["temperature"] = t;
     doc["humidity"] = h;
     doc["moisture"] = s;
@@ -104,7 +104,7 @@ void streamTelemetryToBackend(float t, float h, int s, int l, int w, int score, 
         String response = http.getString();
         
         // Parse incoming controls
-        JsonDocument responseDoc;
+        StaticJsonDocument<512> responseDoc;
         DeserializationError error = deserializeJson(responseDoc, response);
         
         if (!error && responseDoc.containsKey("deviceStates")) {
@@ -172,6 +172,7 @@ void setup() {
     digitalWrite(BUZZER_PIN, LOW);
 
     // Initialize I2C OLED Panel
+    Wire.begin(OLED_SDA, OLED_SCL);
     if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println(F("[CRITICAL] OLED Driver Allocation Failed. Halting."));
         for(;;);
