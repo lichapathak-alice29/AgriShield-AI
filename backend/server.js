@@ -320,6 +320,7 @@ app.post('/api/sensor/live', async (req, res) => {
 
   try {
     const { mongoose } = require('./database');
+    console.log('[TELEMETRY] Connection state check:', mongoose.connection.readyState);
     if (mongoose.connection.readyState !== 1) {
       console.warn('[TELEMETRY] Dropped frame - MongoDB database is currently offline.');
       return res.status(503).json({ error: 'MongoDB database is not connected. Telemetry not saved.' });

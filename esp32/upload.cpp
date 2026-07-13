@@ -10,8 +10,8 @@
 // 1. SYSTEM CONFIGURATION & PIN INITIALIZATION
 // ==========================================
 // Network Setup
-const char* const WIFI_SSID = "YOUR_WIFI_SSID";
-const char* const WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+const char* const WIFI_SSID = "Wifi_SSID";
+const char* const WIFI_PASSWORD = "Wifi_Password";
 const char* const BACKEND_API_URL = "http://192.168.1.138:5000/api/sensor/live";
 
 // Hardware Pins (Exact Match to Your Layout)
@@ -85,7 +85,7 @@ void streamTelemetryToBackend(float t, float h, int s, int l, int w, int score, 
     http.addHeader("Content-Type", "application/json");
 
     // Dynamic JSON Serialization Document
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
     doc["temperature"] = t;
     doc["humidity"] = h;
     doc["moisture"] = s;
@@ -104,7 +104,7 @@ void streamTelemetryToBackend(float t, float h, int s, int l, int w, int score, 
         String response = http.getString();
         
         // Parse incoming controls
-        StaticJsonDocument<512> responseDoc;
+        JsonDocument responseDoc;
         DeserializationError error = deserializeJson(responseDoc, response);
         
         if (!error && responseDoc.containsKey("deviceStates")) {
@@ -132,14 +132,16 @@ int calculateEdgeHealthScore(float t, float h, int s, int w) {
     return constrain(score, 0, 100);
 }
 
-void updateOLEDDisplay(float t, float h, int s, int w, String pStatus, String fStatus, int score) {
+// LDR (int l) parameter add kiya gaya hai display update ke liye
+void updateOLEDDisplay(float t, float h, int s, int w, int l, String pStatus, String fStatus, int score) {
     display.clearDisplay();
     display.setTextSize(1);
     display.setCursor(0,0);
     
     display.printf("Temp: %.1fC  Hum: %.1f%%\n", t, h);
     display.printf("Soil: %d%%   Tank: %d%%\n", s, w);
-    display.printf("Pump: %s   Fan: %s\n", pStatus.c_str(), fStatus.c_str());
+    display.printf("Light: %d%%  Pump: %s\n", l, pStatus.c_str());
+    display.printf("Fan: %s\n", fStatus.c_str());
     display.printf("---------------------\n");
     
     display.setTextSize(2);
@@ -172,7 +174,6 @@ void setup() {
     digitalWrite(BUZZER_PIN, LOW);
 
     // Initialize I2C OLED Panel
-    Wire.begin(OLED_SDA, OLED_SCL);
     if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println(F("[CRITICAL] OLED Driver Allocation Failed. Halting."));
         for(;;);
@@ -263,11 +264,12 @@ void loop() {
     // 4.3 Asynchronous Execution Timers
     // Task 1: Refresh Local HUD Display Panel Elements
     if (currentClock - lastLocalUpdate >= POLLING_INTERVAL) {
-        updateOLEDDisplay(currentTemp, currentHumid, currentSoil, currentWater, statusPump, statusFan, currentHealthScore);
+        // currentLight ko yahan pass kiya gaya hai display aur serial logs ke liye
+        updateOLEDDisplay(currentTemp, currentHumid, currentSoil, currentWater, currentLight, statusPump, statusFan, currentHealthScore);
         
-        // Print clean structural terminal logs
-        Serial.printf("[LOG] Mode:%s | T:%.1fC | H:%.1f%% | S:%d%% | W:%d%% | Score:%d\n", 
-                      currentMode.c_str(), currentTemp, currentHumid, currentSoil, currentWater, currentHealthScore);
+        // Print clean structural terminal logs (LDR include kiya gaya hai)
+        Serial.printf("[LOG] Mode:%s | T:%.1fC | H:%.1f%% | S:%d%% | L:%d%% | W:%d%% | Score:%d\n", 
+                      currentMode.c_str(), currentTemp, currentHumid, currentSoil, currentLight, currentWater, currentHealthScore);
         lastLocalUpdate = currentClock;
     }
 
