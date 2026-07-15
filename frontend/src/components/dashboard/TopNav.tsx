@@ -2,15 +2,27 @@ import { Bell, Search, Sun, Moon, Cloud, MapPin } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
+import { useAgrishield } from "@/hooks/useAgrishield";
 
 export function TopNav() {
   const { theme, toggle } = useTheme();
   const [notifOpen, setNotifOpen] = useState(false);
+  const { user } = useAgrishield();
+  const displayName = user?.name || "User";
+  const getInitials = (nameStr: string) => {
+    return nameStr
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+  const initials = getInitials(displayName);
   return (
     <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b border-border/60">
       <div className="h-16 px-4 sm:px-6 flex items-center gap-3">
         <div className="min-w-0">
-          <div className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3"/> Verdant Farms · Nairobi</div>
+          <div className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3"/> Guwahati, Assam, India</div>
           <div className="font-semibold text-sm truncate">Greenhouse 04 — "Basil House"</div>
         </div>
 
@@ -53,7 +65,7 @@ export function TopNav() {
             {theme === "dark" ? <Sun className="h-4 w-4"/> : <Moon className="h-4 w-4"/>}
           </button>
 
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald to-forest grid place-items-center text-white text-xs font-semibold shadow-glow-emerald">AO</div>
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald to-forest grid place-items-center text-white text-xs font-semibold shadow-glow-emerald">{initials}</div>
         </div>
       </div>
     </header>

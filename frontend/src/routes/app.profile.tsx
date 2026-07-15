@@ -19,9 +19,9 @@ function Profile() {
     navigate({ to: "/" });
   };
 
-  const displayName = user?.name || "Amina Okoro";
-  const displayEmail = user?.email || "amina@verdant.co";
-  const displayRole = user?.role || "Head Grower";
+  const displayName = user?.name || "User";
+  const displayEmail = user?.email || "user@agrishield.ai";
+  const displayRole = user?.role || "Operator";
 
   const getInitials = (nameStr: string) => {
     return nameStr
@@ -56,11 +56,11 @@ function Profile() {
         </div>
         <div className="flex-1 min-w-[220px]">
           <div className="text-2xl font-bold">{displayName}</div>
-          <div className="text-sm text-muted-foreground">{displayRole} · Verdant Farms</div>
+          <div className="text-sm text-muted-foreground">{displayRole} · AgriShield AI</div>
           <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3"/> {displayEmail}</span>
-            <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3"/> +254 700 000 000</span>
-            <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3"/> Nairobi, Kenya</span>
+            <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3"/> +91 XXXXX XXXXX</span>
+            <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3"/> Guwahati, Assam, India</span>
           </div>
         </div>
         <button className="rounded-full bg-foreground text-background px-5 py-2.5 text-sm font-medium">Edit profile</button>

@@ -69,7 +69,7 @@ function Dashboard() {
     <div className="max-w-[1600px] mx-auto space-y-5">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Good morning, Amina</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Welcome to AgriShield AI</h1>
           <p className="text-sm text-muted-foreground mt-1">Everything looks healthy across your active greenhouse.</p>
         </div>
         <div className="flex items-center gap-2 text-xs">
