@@ -83,7 +83,6 @@ function Nav() {
           <a href="#faq" className="hover:text-foreground transition">FAQ</a>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/login" className="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground px-3 py-2">Sign in</Link>
           <Link to="/app" className="inline-flex items-center gap-1.5 rounded-full bg-foreground text-background px-4 py-2 text-sm font-medium hover:opacity-90 transition">
             Open Dashboard <ArrowRight className="h-3.5 w-3.5" />
           </Link>

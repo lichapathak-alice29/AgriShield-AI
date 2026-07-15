@@ -22,6 +22,14 @@ export interface SystemAlert {
   timestamp: string;
 }
 
+export interface DeviceStates {
+  pump: 'ON' | 'OFF';
+  fan: 'ON' | 'OFF';
+  light: 'ON' | 'OFF';
+  buzzer: 'ON' | 'OFF';
+  mode: 'Auto' | 'Manual';
+}
+
 export interface AnalyticsData {
   avgTemp: number;
   maxTemp: number;
@@ -53,6 +61,7 @@ interface AgrishieldContextType {
   history: SensorReading[];
   activeAlerts: SystemAlert[];
   analytics: AnalyticsData | null;
+  deviceStates: DeviceStates | null;
   isConnected: boolean;
   user: UserProfile | null;
   token: string | null;
@@ -62,6 +71,7 @@ interface AgrishieldContextType {
   resolveAlert: (id: number) => Promise<void>;
   clearAllAlerts: () => Promise<void>;
   refreshAnalytics: () => Promise<void>;
+  updateDevices: (updates: Partial<DeviceStates>) => Promise<void>;
 }
 
 const AgrishieldContext = createContext<AgrishieldContextType | undefined>(undefined);
@@ -71,6 +81,7 @@ export function AgrishieldProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<SensorReading[]>([]);
   const [activeAlerts, setActiveAlerts] = useState<SystemAlert[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [deviceStates, setDeviceStates] = useState<DeviceStates | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   
   const [user, setUser] = useState<UserProfile | null>(() => {
@@ -189,7 +200,14 @@ export function AgrishieldProvider({ children }: { children: ReactNode }) {
         setActiveAlerts(data);
       }
 
-      // 4. Analytics
+      // 4. Device States
+      const resDevices = await fetch(`${API_URL}/api/devices`, { headers: getHeaders() });
+      if (resDevices.ok) {
+        const data = await resDevices.json();
+        setDeviceStates(data);
+      }
+
+      // 5. Analytics
       await refreshAnalytics();
     } catch (err) {
       console.warn('Backend is unreachable via HTTP. Standing by for connection...', err);
@@ -237,6 +255,22 @@ export function AgrishieldProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateDevices = async (updates: Partial<DeviceStates>) => {
+    try {
+      const res = await fetch(`${API_URL}/api/devices`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDeviceStates(data);
+      }
+    } catch (err) {
+      console.error('Failed to update device states:', err);
+    }
+  };
+
   useEffect(() => {
     const savedToken = localStorage.getItem('agrishield_token');
     if (savedToken) {
@@ -266,9 +300,10 @@ export function AgrishieldProvider({ children }: { children: ReactNode }) {
           
           switch (message.type) {
             case 'INIT': {
-              const { latestReading: initLatest, activeAlerts: initAlerts } = message.data;
+              const { latestReading: initLatest, activeAlerts: initAlerts, deviceStates: initDevices } = message.data;
               if (initLatest) setLatestReading(initLatest);
               if (initAlerts) setActiveAlerts(initAlerts);
+              if (initDevices) setDeviceStates(initDevices);
               break;
             }
             case 'TELEMETRY': {
@@ -310,6 +345,11 @@ export function AgrishieldProvider({ children }: { children: ReactNode }) {
               setActiveAlerts([]);
               break;
             }
+            case 'DEVICE_STATES_UPDATED': {
+              const updatedDevices = message.data as DeviceStates;
+              setDeviceStates(updatedDevices);
+              break;
+            }
             default:
               break;
           }
@@ -344,6 +384,7 @@ export function AgrishieldProvider({ children }: { children: ReactNode }) {
       history,
       activeAlerts,
       analytics,
+      deviceStates,
       isConnected,
       user,
       token,
@@ -352,7 +393,8 @@ export function AgrishieldProvider({ children }: { children: ReactNode }) {
       logout,
       resolveAlert,
       clearAllAlerts,
-      refreshAnalytics
+      refreshAnalytics,
+      updateDevices
     }}>
       {children}
     </AgrishieldContext.Provider>

@@ -16,7 +16,7 @@ function Profile() {
   const handleLogout = () => {
     logout();
     toast.success("Successfully signed out.");
-    navigate({ to: "/login" });
+    navigate({ to: "/" });
   };
 
   const displayName = user?.name || "Amina Okoro";

@@ -173,6 +173,29 @@ void setup() {
     digitalWrite(FAN_RELAY_PIN, HIGH);
     digitalWrite(BUZZER_PIN, LOW);
 
+    // Initialize I2C bus with custom pins
+    Wire.begin(OLED_SDA, OLED_SCL);
+
+    // I2C Scanner to debug connection
+    Serial.println("[I2C] Scanning for devices...");
+    byte error, address;
+    int nDevices = 0;
+    for(address = 1; address < 127; address++) {
+        Wire.beginTransmission(address);
+        error = Wire.endTransmission();
+        if (error == 0) {
+            Serial.printf("[I2C] Device found at address 0x%02X\n", address);
+            nDevices++;
+        } else if (error == 4) {
+            Serial.printf("[I2C] Unknown error at address 0x%02X\n", address);
+        }
+    }
+    if (nDevices == 0) {
+        Serial.println("[I2C] CRITICAL: No I2C devices found. Check wiring (SDA/SCL/VCC/GND).");
+    } else {
+        Serial.println("[I2C] Scan complete.");
+    }
+
     // Initialize I2C OLED Panel
     if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println(F("[CRITICAL] OLED Driver Allocation Failed. Halting."));
