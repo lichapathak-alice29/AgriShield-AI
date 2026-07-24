@@ -3,8 +3,6 @@
 #include <ArduinoJson.h>
 #include <Wire.h>
 #include <DHT.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
 
 // ==========================================
 // 1. SYSTEM CONFIGURATION & PIN INITIALIZATION
@@ -21,14 +19,9 @@ const char* const BACKEND_API_URL = "http://192.168.1.138:5000/api/sensor/live";
 #define WATER_LEVEL_PIN 32
 #define PUMP_RELAY_PIN 26
 #define FAN_RELAY_PIN 27
-#define BUZZER_PIN 25
-#define OLED_SDA 21
-#define OLED_SCL 22
 
 // Hardware Configurations
 #define DHTTYPE DHT22
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
 
 // Automation Edge Thresholds
 const float TEMP_CRITICAL_HIGH = 35.0; // °C
@@ -43,13 +36,11 @@ const unsigned long TRANSMIT_INTERVAL = 15000;  // 15 Seconds for cloud API push
 
 // Object Instances
 DHT dht(DHTPIN, DHTTYPE);
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Dynamic Actuator State Cache (IoT Synchronization)
 String currentMode = "Auto";
 String manualPumpStatus = "OFF";
 String manualFanStatus = "OFF";
-String manualBuzzerStatus = "OFF";
 
 // ==========================================
 // 2. NETWORK & DRIVER SUBSYSTEMS
@@ -112,7 +103,6 @@ void streamTelemetryToBackend(float t, float h, int s, int l, int w, int score, 
             currentMode = controls["mode"] | "Auto";
             manualPumpStatus = controls["pump"] | "OFF";
             manualFanStatus = controls["fan"] | "OFF";
-            manualBuzzerStatus = controls["buzzer"] | "OFF";
             
             Serial.printf("[IOT] Linked. Mode:%s | Pump:%s | Fan:%s\n", 
                           currentMode.c_str(), manualPumpStatus.c_str(), manualFanStatus.c_str());
@@ -132,23 +122,7 @@ int calculateEdgeHealthScore(float t, float h, int s, int w) {
     return constrain(score, 0, 100);
 }
 
-// LDR (int l) parameter add kiya gaya hai display update ke liye
-void updateOLEDDisplay(float t, float h, int s, int w, int l, String pStatus, String fStatus, int score) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setCursor(0,0);
-    
-    display.printf("Temp: %.1fC  Hum: %.1f%%\n", t, h);
-    display.printf("Soil: %d%%   Tank: %d%%\n", s, w);
-    display.printf("Light: %d%%  Pump: %s\n", l, pStatus.c_str());
-    display.printf("Fan: %s\n", fStatus.c_str());
-    display.printf("---------------------\n");
-    
-    display.setTextSize(2);
-    display.setCursor(0, 48);
-    display.printf("Score: %d", score);
-    display.display();
-}
+
 
 // ==========================================
 // 3. MAIN APPLICATION SETUP & ENTRY POINT
@@ -166,47 +140,10 @@ void setup() {
     // Actuator Pins
     pinMode(PUMP_RELAY_PIN, OUTPUT);
     pinMode(FAN_RELAY_PIN, OUTPUT);
-    pinMode(BUZZER_PIN, OUTPUT);
 
     // High Voltage Safety Power Reset (Active Low Relays)
     digitalWrite(PUMP_RELAY_PIN, HIGH);
     digitalWrite(FAN_RELAY_PIN, HIGH);
-    digitalWrite(BUZZER_PIN, LOW);
-
-    // Initialize I2C bus with custom pins
-    Wire.begin(OLED_SDA, OLED_SCL);
-
-    // I2C Scanner to debug connection
-    Serial.println("[I2C] Scanning for devices...");
-    byte error, address;
-    int nDevices = 0;
-    for(address = 1; address < 127; address++) {
-        Wire.beginTransmission(address);
-        error = Wire.endTransmission();
-        if (error == 0) {
-            Serial.printf("[I2C] Device found at address 0x%02X\n", address);
-            nDevices++;
-        } else if (error == 4) {
-            Serial.printf("[I2C] Unknown error at address 0x%02X\n", address);
-        }
-    }
-    if (nDevices == 0) {
-        Serial.println("[I2C] CRITICAL: No I2C devices found. Check wiring (SDA/SCL/VCC/GND).");
-    } else {
-        Serial.println("[I2C] Scan complete.");
-    }
-
-    // Initialize I2C OLED Panel
-    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-        Serial.println(F("[CRITICAL] OLED Driver Allocation Failed. Halting."));
-        for(;;);
-    }
-    
-    display.clearDisplay();
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0,10);
-    display.println("AgriShield Booting...");
-    display.display();
 
     connectToWiFi();
     Serial.println("[SYSTEM] Startup Sequence Confirmed. Active Execution Initiated.");
@@ -255,7 +192,6 @@ void loop() {
         
         digitalWrite(PUMP_RELAY_PIN, statusPump == "ON" ? LOW : HIGH);
         digitalWrite(FAN_RELAY_PIN, statusFan == "ON" ? LOW : HIGH);
-        digitalWrite(BUZZER_PIN, manualBuzzerStatus == "ON" ? HIGH : LOW);
     } else {
         // Run edge auto-rule logic
         // Automated Ventilation Control
@@ -273,24 +209,13 @@ void loop() {
         } else {
             digitalWrite(PUMP_RELAY_PIN, HIGH); // Relay Deactivated
         }
-
-        // Local Audio Alert Loop
-        if (currentWater < WATER_TANK_EMPTY_LIMIT) {
-            digitalWrite(BUZZER_PIN, HIGH);
-        } else {
-            digitalWrite(BUZZER_PIN, LOW);
-        }
     }
 
     int currentHealthScore = calculateEdgeHealthScore(currentTemp, currentHumid, currentSoil, currentWater);
 
     // 4.3 Asynchronous Execution Timers
-    // Task 1: Refresh Local HUD Display Panel Elements
+    // Task 1: Print clean structural terminal logs
     if (currentClock - lastLocalUpdate >= POLLING_INTERVAL) {
-        // currentLight ko yahan pass kiya gaya hai display aur serial logs ke liye
-        updateOLEDDisplay(currentTemp, currentHumid, currentSoil, currentWater, currentLight, statusPump, statusFan, currentHealthScore);
-        
-        // Print clean structural terminal logs (LDR include kiya gaya hai)
         Serial.printf("[LOG] Mode:%s | T:%.1fC | H:%.1f%% | S:%d%% | L:%d%% | W:%d%% | Score:%d\n", 
                       currentMode.c_str(), currentTemp, currentHumid, currentSoil, currentLight, currentWater, currentHealthScore);
         lastLocalUpdate = currentClock;

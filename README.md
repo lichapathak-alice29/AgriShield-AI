@@ -107,10 +107,9 @@ The ESP32 firmware located in the `esp32` folder is set up to read telemetry and
     "reading": { ... },
     "alertsTriggered": [ ... ],
     "deviceStates": {
-      "pump": "ON",
+      "pump": "OFF",
       "fan": "OFF",
       "light": "OFF",
-      "buzzer": "OFF",
       "mode": "Auto"
     }
   }

@@ -9,7 +9,7 @@ A robust, enterprise-grade Node.js/Express backend API and WebSockets server for
 - **MongoDB Database Integration:** Schema models using Mongoose mapping to exact collection collections: `users`, `sensorData`, `devices`, `alerts`, `automationRules`, and `reports`.
 - **JWT User Authentication:** Registration and Login routes with cryptographically secure passwords hashed using `bcryptjs` and session tokens signed using `jsonwebtoken`.
 - **Smart Rules & Alerting Engine:** Fetches user-defined thresholds from the database on startup. Generates active alerts when parameters cross boundaries, implementing hysteresis logic to avoid alert flickering.
-- **Dynamic Actuator Control:** Allows dashboard clients to check and override physical actuator statuses (Pump, Fan, Light, Buzzer) and operation modes (Auto/Manual).
+- **Dynamic Actuator Control:** Allows dashboard clients to check and override physical actuator statuses (Pump, Fan, Light) and operation modes (Auto/Manual).
 - **Daily Reports Generator:** Aggregates and calculates daily averages, pump runtimes, and water consumption logs for historical analytics.
 - **Real-Time Data Streaming:** Built-in WebSocket Server (`ws`) automatically broadcasts all live telemetry, device overrides, and alert changes to connected dashboard clients.
 
@@ -81,7 +81,6 @@ Tracks current actuator state variables.
 - `pump`: String (`ON` / `OFF`)
 - `fan`: String (`ON` / `OFF`)
 - `light`: String (`ON` / `OFF`)
-- `buzzer`: String (`ON` / `OFF`)
 - `mode`: String (`Auto` / `Manual`)
 - `createdAt` & `updatedAt`: Date
 
@@ -100,7 +99,7 @@ Stores configurable parameter limits used to govern automated triggers.
 - `conditionParameter`: String (`temperature`, `moisture`, `waterLevel`)
 - `operator`: String (`>`, `<`, `>=`, `<=`)
 - `value`: Number
-- `actionTarget`: String (`pumpStatus`, `fanStatus`, `buzzerStatus`)
+- `actionTarget`: String (`pumpStatus`, `fanStatus`)
 - `actionValue`: String (`ON` / `OFF`)
 - `isEnabled`: Boolean
 - `createdAt` & `updatedAt`: Date
@@ -134,7 +133,7 @@ Aggregated daily averages used to feed dashboard trend charts.
 - `GET /api/sensor/analytics` - Fetch rolling 24h min/max/average stats.
 
 ### 🔌 Device Actuator Endpoints
-- `GET /api/devices` - Fetch current pump/fan/light/buzzer/mode configuration.
+- `GET /api/devices` - Fetch current pump/fan/light/mode configuration.
 - `PUT /api/devices` - Override current actuator states (e.g. toggle Mode from Auto to Manual).
 
 ### 🚨 Alert Management Endpoints

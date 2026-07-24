@@ -34,17 +34,32 @@ const saveReading = async (reading) => {
 
   await data.save();
 
-  // Keep Device collection in sync with the latest state
-  await Device.findOneAndUpdate(
-    {},
-    { 
-      pump: reading.pumpStatus, 
-      fan: reading.fanStatus,
-      // If we have light in telemetry we can update device light too
-      light: reading.light > 30 ? 'ON' : 'OFF' 
-    },
-    { upsert: true, new: true }
-  );
+  // Keep Device collection in sync with the latest state, but ONLY in Auto mode
+  // so we don't overwrite user's manual commands with lagging telemetry data
+  const currentDevice = await Device.findOne().sort({ _id: 1 }).lean();
+  const isManual = currentDevice && currentDevice.mode === 'Manual';
+
+  if (!isManual && currentDevice) {
+    await Device.findByIdAndUpdate(
+      currentDevice._id,
+      { 
+        $set: {
+          pump: reading.pumpStatus, 
+          fan: reading.fanStatus,
+          // If we have light in telemetry we can update device light too
+          light: reading.light > 30 ? 'ON' : 'OFF' 
+        }
+      },
+      { new: true }
+    );
+  } else if (!currentDevice) {
+     await Device.create({
+          pump: reading.pumpStatus, 
+          fan: reading.fanStatus,
+          light: reading.light > 30 ? 'ON' : 'OFF' ,
+          mode: 'Auto'
+     });
+  }
 
   return {
     id: data._id.toString(),
@@ -265,35 +280,47 @@ const generateDailyReport = async (dateString) => {
 // --- DEVICE STATE HELPERS ---
 
 const getDeviceStates = async () => {
-  let devices = await Device.findOne().lean();
+  let devices = await Device.findOne().sort({ _id: 1 }).lean();
   if (!devices) {
     // Seed default document
     devices = new Device();
     await devices.save();
-    return devices;
+    devices = devices.toObject();
+  }
+  
+  // Clear any duplicates
+  if (devices && devices._id) {
+    await Device.deleteMany({ _id: { $ne: devices._id } });
   }
   return {
     id: devices._id.toString(),
     pump: devices.pump,
     fan: devices.fan,
     light: devices.light,
-    buzzer: devices.buzzer,
     mode: devices.mode
   };
 };
 
 const updateDeviceStates = async (updates) => {
-  const devices = await Device.findOneAndUpdate(
-    {},
-    { $set: updates },
-    { upsert: true, new: true }
-  ).lean();
+  let device = await Device.findOne().sort({ _id: 1 }).lean();
+  
+  let devices;
+  if (!device) {
+    devices = new Device(updates);
+    await devices.save();
+    devices = devices.toObject();
+  } else {
+    devices = await Device.findByIdAndUpdate(
+      device._id,
+      { $set: updates },
+      { new: true }
+    ).lean();
+  }
   return {
     id: devices._id.toString(),
     pump: devices.pump,
     fan: devices.fan,
     light: devices.light,
-    buzzer: devices.buzzer,
     mode: devices.mode
   };
 };

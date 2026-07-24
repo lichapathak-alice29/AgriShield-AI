@@ -16,11 +16,7 @@ const deviceSchema = new mongoose.Schema({
     enum: ['ON', 'OFF'], 
     default: 'OFF' 
   },
-  buzzer: { 
-    type: String, 
-    enum: ['ON', 'OFF'], 
-    default: 'OFF' 
-  },
+
   mode: { 
     type: String, 
     enum: ['Auto', 'Manual'], 

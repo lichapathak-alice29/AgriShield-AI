@@ -1,14 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
-import { Wind, Droplets, Sun, Volume2, Cpu, AlertCircle } from "lucide-react";
+import { Wind, Droplets, Sun, Cpu, AlertCircle } from "lucide-react";
 import { useAgrishield } from "@/hooks/useAgrishield";
 
 const iconMap: Record<string, React.ElementType> = { 
   fan: Wind, 
   pump: Droplets, 
-  light: Sun, 
-  buzzer: Volume2 
+  light: Sun
 };
 
 export const Route = createFileRoute("/app/devices")({
@@ -24,8 +23,7 @@ function Devices() {
   const items = [
     { id: "fan", name: "Ventilation Fan", zone: "Zone A", type: "fan", state: deviceStates?.fan === "ON" },
     { id: "pump", name: "Irrigation Pump", zone: "Zone A", type: "pump", state: deviceStates?.pump === "ON" },
-    { id: "light", name: "Grow Light", zone: "Zone A", type: "light", state: deviceStates?.light === "ON" },
-    { id: "buzzer", name: "Audio Buzzer", zone: "Zone A", type: "buzzer", state: deviceStates?.buzzer === "ON" },
+    { id: "light", name: "Grow Light", zone: "Zone A", type: "light", state: deviceStates?.light === "ON" }
   ];
 
   const handleDeviceToggle = (id: string, checked: boolean) => {

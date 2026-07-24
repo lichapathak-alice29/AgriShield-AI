@@ -26,7 +26,6 @@ export interface DeviceStates {
   pump: 'ON' | 'OFF';
   fan: 'ON' | 'OFF';
   light: 'ON' | 'OFF';
-  buzzer: 'ON' | 'OFF';
   mode: 'Auto' | 'Manual';
 }
 

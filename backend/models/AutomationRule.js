@@ -20,7 +20,7 @@ const automationRuleSchema = new mongoose.Schema({
   },
   actionTarget: { 
     type: String, 
-    required: true // e.g. 'pumpStatus', 'fanStatus', 'buzzerStatus'
+    required: true // e.g. 'pumpStatus', 'fanStatus'
   },
   actionValue: { 
     type: String, 

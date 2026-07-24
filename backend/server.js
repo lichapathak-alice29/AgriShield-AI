@@ -73,14 +73,6 @@ const seedDefaultRules = async () => {
           value: 30,
           actionTarget: "pumpStatus",
           actionValue: "ON"
-        },
-        {
-          ruleName: "Alert when Tank Level < 15%",
-          conditionParameter: "waterLevel",
-          operator: "<",
-          value: 15,
-          actionTarget: "buzzerStatus",
-          actionValue: "ON"
         }
       ];
       await AutomationRule.insertMany(defaultRules);
@@ -119,7 +111,7 @@ wss.on('connection', async (ws) => {
         data: {
           latestReading: null,
           activeAlerts: [],
-          deviceStates: { pump: 'OFF', fan: 'OFF', light: 'OFF', buzzer: 'OFF', mode: 'Auto' }
+          deviceStates: { pump: 'OFF', fan: 'OFF', light: 'OFF', mode: 'Auto' }
         }
       }));
       return;
@@ -342,6 +334,7 @@ app.post('/api/sensor/live', async (req, res) => {
     const deviceStates = await getDeviceStates();
 
     broadcast({ type: 'TELEMETRY', data: savedReading });
+    broadcast({ type: 'DEVICE_STATES_UPDATED', data: deviceStates });
     if (alertChanges.length > 0) {
       broadcast({ type: 'ALERTS_UPDATE', data: alertChanges });
     }
@@ -355,7 +348,6 @@ app.post('/api/sensor/live', async (req, res) => {
         pump: deviceStates.pump,
         fan: deviceStates.fan,
         light: deviceStates.light,
-        buzzer: deviceStates.buzzer,
         mode: deviceStates.mode
       }
     });
